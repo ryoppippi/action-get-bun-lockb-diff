@@ -24,22 +24,24 @@ runs:
         fi
 
     - name: Get diff of bun.lockb and comment on PR
-      id: bun_lockb_diff
       shell: bash -e {0}
       run: |
         echo "*.lockb binary diff=lockb" > .gitattributes
         git config diff.lockb.textconv bun
         git config diff.lockb.binary true
-        echo "diff=$(git diff --no-color ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }} -- ${{ inputs.lockb-path }})" >> "$GITHUB_OUTPUT"
+        git fetch origin ${{ github.event.pull_request.base.ref }}
+        git fetch origin ${{ github.event.pull_request.head.ref }}
+        echo "```diff" > diff.txt
+        git diff --no-color origin/main origin/feature/add-unknownutil -- ${{ inputs.lockb-path }} > diff.txt
+        echo "```" >> diff.txt
 
     - name: Comment Diff on PR
       shell: bash -e {0}
       run: |
-        if [[ -n "${{ steps.bun_lockb_diff.outputs.diff }}" ]]; then
+        if [ -s diff.txt ]; then
           gh pr comment \
             ${{ github.event.pull_request.number }} \
-            --body "$(cat ${{ steps.bun_lockb_diff.outputs.diff }})" \
-            --edit-last
+            -F diff.txt 
         fi
       env:
         GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}

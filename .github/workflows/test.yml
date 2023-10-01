@@ -2,12 +2,14 @@ name: Test
 
 on:
   pull_request:
-  push:
   workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
@@ -15,5 +17,5 @@ jobs:
           bun-version: latest
       - uses: ./
         with:
-          lockb-path: ./bun.lockb
+          lockb-path: ./tests/bun_project/bun.lockb
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
