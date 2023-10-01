@@ -1,26 +1,48 @@
-name: Composite Action Template
+name: Get diff of bun.lockb and comment on PR
 description: Get started with Composite actions
 branding:
   icon: award
   color: green
 inputs:
-  who-to-greet:
-    description: Who to greet
+  lockb-path:
+    description: 'Path to bun.lockb'
+    required: false
+    default: './bun.lockb'
+  GITHUB_TOKEN:
+    description: 'GITHUB_TOKEN'
     required: true
-    default: World
-outputs:
-  greet:
-    description: The word we greeted you
-    value: ${{ steps.greet.outputs.word }}
 runs:
   using: composite
   steps:
-    - id: greet
+    - name: Check if Bun is installed
+      shell: bash -e {0}
       run: |
-        GREET="Hello ${WHO}"
-        echo "${GREET}"
-        echo "${GREET}" > greet.txt
-        echo "word=${GREET}" >> $GITHUB_OUTPUT
-      shell: bash
-      env:
-        WHO: ${{ inputs.who-to-greet }}
+        if ! command -v bun &> /dev/null
+        then
+            echo "Bun could not be found"
+            exit 1
+        fi
+
+    - name: Get diff of bun.lockb and comment on PR
+      id: bun_lockb_diff
+      shell: bash -e {0}
+      run: |
+        echo "*.lockb binary diff=lockb" > .gitattributes
+        git config diff.lockb.textconv bun
+        git config diff.lockb.binary true
+        echo "diff=$(git diff --no-color ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }} -- ${{ inputs.lockb-path }})" >> "$GITHUB_OUTPUT"
+
+    - name: Comment Diff on PR
+      uses: actions/github-script@v3
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment \
+          ${{ github.event.pull_request.number }} \
+          --body "$(cat ${{ steps.bun_lockb_diff.outputs.diff }})" \
+          --edit-last
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+
