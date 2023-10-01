@@ -33,16 +33,16 @@ runs:
         echo "diff=$(git diff --no-color ${{ github.event.pull_request.base.ref }} ${{ github.event.pull_request.head.ref }} -- ${{ inputs.lockb-path }})" >> "$GITHUB_OUTPUT"
 
     - name: Comment Diff on PR
-      uses: actions/github-script@v3
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        run: |
+      shell: bash -e {0}
+      run: |
+        if [[ -n "${{ steps.bun_lockb_diff.outputs.diff }}" ]]; then
           gh pr comment \
-          ${{ github.event.pull_request.number }} \
-          --body "$(cat ${{ steps.bun_lockb_diff.outputs.diff }})" \
-          --edit-last
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            ${{ github.event.pull_request.number }} \
+            --body "$(cat ${{ steps.bun_lockb_diff.outputs.diff }})" \
+            --edit-last
+        fi
+      env:
+        GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
 
 
 
